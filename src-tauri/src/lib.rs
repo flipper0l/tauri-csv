@@ -1,5 +1,7 @@
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::sync::Mutex;
 
 struct AppState {
@@ -36,6 +38,32 @@ fn normalize_header(value: &str) -> String {
     value.trim().to_ascii_lowercase()
 }
 
+fn detect_csv_delimiter(path: &str) -> Result<u8, String> {
+    let file = File::open(path).map_err(|e| e.to_string())?;
+    let mut reader = BufReader::new(file);
+    let mut first_line = String::new();
+    reader
+        .read_line(&mut first_line)
+        .map_err(|e| e.to_string())?;
+
+    if first_line.is_empty() {
+        return Ok(b',');
+    }
+
+    let semicolons = first_line.matches(';').count();
+    let commas = first_line.matches(',').count();
+    let tabs = first_line.matches('\t').count();
+
+    if semicolons >= commas && semicolons >= tabs && semicolons > 0 {
+        return Ok(b';');
+    }
+    if tabs >= commas && tabs > 0 {
+        return Ok(b'\t');
+    }
+
+    Ok(b',')
+}
+
 #[tauri::command]
 fn import_csv_to_memory_db(
     state: tauri::State<AppState>,
@@ -55,7 +83,11 @@ fn import_csv_to_memory_db(
     )
     .map_err(|e| e.to_string())?;
 
-    let mut reader = csv::Reader::from_path(&payload.path).map_err(|e| e.to_string())?;
+    let delimiter = detect_csv_delimiter(&payload.path)?;
+    let mut reader = csv::ReaderBuilder::new()
+        .delimiter(delimiter)
+        .from_path(&payload.path)
+        .map_err(|e| e.to_string())?;
     let headers = reader.headers().map_err(|e| e.to_string())?.clone();
 
     let mut id_idx: Option<usize> = None;

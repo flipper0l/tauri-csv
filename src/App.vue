@@ -46,7 +46,7 @@ async function chooseCsvFile() {
 async function fetchPage(targetPage: number) {
   const data = await invoke<PageResult>("get_table_page", {
     page: targetPage,
-    page_size: pageSize.value,
+    pageSize: pageSize.value,
   });
 
   rows.value = data.items;
