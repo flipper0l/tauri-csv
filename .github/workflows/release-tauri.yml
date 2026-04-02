@@ -15,7 +15,7 @@ jobs:
       matrix:
         include:
           - platform: 'windows-latest'
-            args: '--no-bundle' 
+            args: '' 
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -52,29 +52,13 @@ jobs:
       - name: install frontend dependencies
         run: pnpm install
 
-      - name: Build Tauri App (Portable Only)
-        run: pnpm tauri build ${{ matrix.args }}
-
-      - name: Get app version
-        id: app-version
-        shell: bash
-        run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-
-      - name: Upload Portable Executable as Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: App-Portable-Windows
-          # Prende il file hello-world.exe mostrato nel tuo log
-          path: src-tauri/target/release/hello-world.exe 
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: "v${{ steps.app-version.outputs.VERSION }}"
-          name: "App v${{ steps.app-version.outputs.VERSION }}"
-          body: "Scarica il file .exe portatile qui sotto. Nessuna installazione richiesta."
-          draft: true
-          prerelease: false
-          files: src-tauri/target/release/hello-world.exe
+      - uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: app-v__VERSION__-${{ github.sha }}
+          releaseName: 'App v__VERSION__-${{ github.sha }}'
+          releaseBody: 'See the assets to download this version and install.'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
