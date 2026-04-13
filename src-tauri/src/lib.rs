@@ -355,14 +355,6 @@ fn manifest_to_view(manifest: &ProjectManifest) -> ProjectView {
     }
 }
 
-fn workbook_name_from_path(path: &str) -> String {
-    Path::new(path)
-        .file_stem()
-        .and_then(|name| name.to_str())
-        .unwrap_or("Workbook")
-        .to_string()
-}
-
 fn convert_sheet_upload(upload: &SheetUpload) -> SheetData {
     let width = upload.columns.len();
     let rows = upload
