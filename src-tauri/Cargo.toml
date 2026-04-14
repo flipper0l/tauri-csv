@@ -1,5 +1,5 @@
 [package]
-name = "hello-world"
+name = "dematerializzazione"
 version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
@@ -21,7 +21,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
-tauri-plugin-fs = "2"
+tauri-plugin-fs = "2.5.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
