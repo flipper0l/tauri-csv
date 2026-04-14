@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "hello-world",
+  "productName": "Excel Review Desk",
   "version": "0.1.0",
-  "identifier": "com.luca.hello-world",
+  "identifier": "com.luca.excel-review-desk",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,9 +12,11 @@
   "app": {
     "windows": [
       {
-        "title": "hello-world",
-        "width": 800,
-        "height": 600
+        "title": "Excel Review Desk",
+        "width": 1440,
+        "height": 920,
+        "minWidth": 1200,
+        "minHeight": 760
       }
     ],
     "security": {
