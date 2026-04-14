@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readFile, writeFile } from "@tauri-apps/plugin-fs";
 import * as XLSX from "xlsx";
@@ -118,6 +119,7 @@ const versionLabel = ref("");
 const originalWorkbookInput = ref<HTMLInputElement | null>(null);
 const notesWorkbookInput = ref<HTMLInputElement | null>(null);
 const pendingPickerTarget = ref<"original" | "notes" | null>(null);
+let unlistenWipeEvent: (() => void) | null = null;
 
 const totalPages = computed(() => {
   if (!preview.value) {
@@ -461,6 +463,19 @@ async function importNotesWorkbook() {
   }
 }
 
+function resetWorkspaceState() {
+  project.value = null;
+  selectedSheet.value = "";
+  selectedVersionId.value = "";
+  preview.value = null;
+  notesWizard.value = null;
+  wizardItems.value = [];
+  wizardIndex.value = 0;
+  versionLabel.value = "";
+  page.value = 1;
+  syncFilters([]);
+}
+
 function closeWizard() {
   notesWizard.value = null;
   wizardItems.value = [];
@@ -558,7 +573,28 @@ watch(selectedSheet, () => {
 });
 
 onMounted(async () => {
+  if (isTauriRuntime()) {
+    unlistenWipeEvent = await listen<string | null>("app-data-wiped", (event) => {
+      busyLabel.value = "";
+      loading.value = false;
+
+      if (event.payload) {
+        errorMessage.value = event.payload;
+        return;
+      }
+
+      resetFeedback();
+      resetWorkspaceState();
+      successMessage.value = "Tutti i dati importati sono stati cancellati.";
+    });
+  }
+
   await loadCurrentProject();
+});
+
+onBeforeUnmount(() => {
+  unlistenWipeEvent?.();
+  unlistenWipeEvent = null;
 });
 </script>
 
@@ -611,7 +647,7 @@ onMounted(async () => {
       </section>
 
       <button type="button" class="import-button" @click="importOriginalWorkbook" :disabled="loading">
-        Importa file originale
+        Import
       </button>
     </aside>
 
@@ -688,7 +724,7 @@ onMounted(async () => {
           </table>
         </div>
 
-        <div class="filter-actions">
+        <!-- <div class="filter-actions">
           <button type="button" @click="applyFilters" :disabled="loading">Applica filtri</button>
           <button
             type="button"
@@ -700,7 +736,7 @@ onMounted(async () => {
           >
             Reset filtri
           </button>
-        </div>
+        </div> -->
       </section>
 
       <section v-else class="empty-state">
@@ -711,7 +747,7 @@ onMounted(async () => {
         </p>
       </section>
 
-      <section v-if="project" class="history-card">
+      <!-- <section v-if="project" class="history-card">
         <div class="history-header">
           <h3>Storico versioni</h3>
           <span>{{ project.versions.length }} versioni</span>
@@ -734,7 +770,7 @@ onMounted(async () => {
             </div>
           </article>
         </div>
-      </section>
+      </section> -->
     </section>
 
     <div v-if="notesWizard" class="modal-backdrop">
@@ -928,13 +964,13 @@ button:hover {
 }
 
 .sheet-button.active {
-  background: linear-gradient(135deg, #f5d4a5, #f7f2e6);
+  background: #f5d4a5;
 }
 
 .import-button {
   margin-top: auto;
   padding: 1rem;
-  background: linear-gradient(135deg, #f1c98f, #f4ebda);
+  background: #f1c98f;
 }
 
 .main-panel {

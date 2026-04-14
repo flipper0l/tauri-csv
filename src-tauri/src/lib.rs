@@ -4,9 +4,12 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Manager};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::{AppHandle, Emitter, Manager};
 
 const APP_STATE_FILE: &str = "app-state.json";
+const MENU_WIPE_APP_DATA_ID: &str = "wipe_app_data";
+const APP_DATA_WIPED_EVENT: &str = "app-data-wiped";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct SheetSummary {
@@ -295,6 +298,14 @@ fn data_root(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
+fn data_root_path(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("excel-reviewer"))
+}
+
 fn state_file_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(data_root(app)?.join(APP_STATE_FILE))
 }
@@ -477,6 +488,24 @@ fn get_current_project(app: AppHandle) -> Result<Option<ProjectView>, String> {
 
     let manifest = load_project_manifest(&app, &project_id)?;
     Ok(Some(manifest_to_view(&manifest)))
+}
+
+#[tauri::command]
+fn wipe_app_data(app: AppHandle) -> Result<(), String> {
+    let data_dir = data_root_path(&app)?;
+    if data_dir.exists() {
+        fs::remove_dir_all(&data_dir).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+fn build_menu(app: &tauri::App) -> Result<Menu<tauri::Wry>, tauri::Error> {
+    let wipe_item = MenuItem::with_id(app, MENU_WIPE_APP_DATA_ID, "Cancella dati", true, None::<&str>)?;
+    let separator = PredefinedMenuItem::separator(app)?;
+    let quit_item = PredefinedMenuItem::quit(app, None)?;
+    let file_menu = Submenu::with_items(app, "File", true, &[&wipe_item, &separator, &quit_item])?;
+
+    Menu::with_items(app, &[&file_menu])
 }
 
 #[tauri::command]
@@ -838,11 +867,26 @@ fn export_version(app: AppHandle, payload: ExportVersionRequest) -> Result<Expor
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            let menu = build_menu(app)?;
+            app.set_menu(menu)?;
+            Ok(())
+        })
+        .on_menu_event(|app, event| {
+            if event.id().as_ref() == MENU_WIPE_APP_DATA_ID {
+                if let Err(error) = wipe_app_data(app.app_handle().clone()) {
+                    let _ = app.emit(APP_DATA_WIPED_EVENT, Some(error));
+                } else {
+                    let _ = app.emit(APP_DATA_WIPED_EVENT, Option::<String>::None);
+                }
+            }
+        })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             get_current_project,
+            wipe_app_data,
             import_original_workbook,
             get_sheet_preview,
             import_notes_workbook,
