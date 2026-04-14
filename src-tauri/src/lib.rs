@@ -74,13 +74,32 @@ struct ChangeLogEntry {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ApiSheetSummary {
+    name: String,
+    columns: usize,
+    rows: usize,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ApiVersionMeta {
+    id: String,
+    label: String,
+    created_at: String,
+    source: String,
+    change_count: usize,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ProjectView {
     project_id: String,
     name: String,
     imported_at: String,
     original_path: String,
-    sheets: Vec<SheetSummary>,
-    versions: Vec<VersionMeta>,
+    sheets: Vec<ApiSheetSummary>,
+    versions: Vec<ApiVersionMeta>,
     active_version_id: String,
 }
 
@@ -106,12 +125,14 @@ struct ColumnFilter {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct PreviewRow {
     key: String,
     cells: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct SheetPreview {
     sheet_name: String,
     columns: Vec<String>,
@@ -133,12 +154,14 @@ struct PreviewRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ReviewField {
     column: String,
     value: String,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct PendingReviewItem {
     sheet_name: String,
     row_key: String,
@@ -148,6 +171,7 @@ struct PendingReviewItem {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct NotesImportResult {
     base_version_id: String,
     total_rows_with_notes: usize,
@@ -193,6 +217,7 @@ struct ApplyNotesImportRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ApplyNotesImportResult {
     project: ProjectView,
     created_version_id: String,
@@ -207,6 +232,7 @@ struct ExportVersionRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ExportSheetData {
     name: String,
     columns: Vec<String>,
@@ -214,6 +240,7 @@ struct ExportSheetData {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ExportResult {
     workbook_name: String,
     version_label: String,
@@ -349,8 +376,26 @@ fn manifest_to_view(manifest: &ProjectManifest) -> ProjectView {
         name: manifest.name.clone(),
         imported_at: manifest.imported_at.clone(),
         original_path: manifest.original_path.clone(),
-        sheets: manifest.sheets.clone(),
-        versions: manifest.versions.clone(),
+        sheets: manifest
+            .sheets
+            .iter()
+            .map(|sheet| ApiSheetSummary {
+                name: sheet.name.clone(),
+                columns: sheet.columns,
+                rows: sheet.rows,
+            })
+            .collect(),
+        versions: manifest
+            .versions
+            .iter()
+            .map(|version| ApiVersionMeta {
+                id: version.id.clone(),
+                label: version.label.clone(),
+                created_at: version.created_at.clone(),
+                source: version.source.clone(),
+                change_count: version.change_count,
+            })
+            .collect(),
         active_version_id: manifest.active_version_id.clone(),
     }
 }

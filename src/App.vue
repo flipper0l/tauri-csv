@@ -14,19 +14,19 @@ type SheetSummary = {
 type VersionMeta = {
   id: string;
   label: string;
-  created_at: string;
+  createdAt: string;
   source: string;
-  change_count: number;
+  changeCount: number;
 };
 
 type ProjectView = {
-  project_id: string;
+  projectId: string;
   name: string;
-  imported_at: string;
-  original_path: string;
+  importedAt: string;
+  originalPath: string;
   sheets: SheetSummary[];
   versions: VersionMeta[];
-  active_version_id: string;
+  activeVersionId: string;
 };
 
 type ColumnFilter = {
@@ -40,12 +40,12 @@ type PreviewRow = {
 };
 
 type SheetPreview = {
-  sheet_name: string;
+  sheetName: string;
   columns: string[];
   rows: PreviewRow[];
   total: number;
   page: number;
-  page_size: number;
+  pageSize: number;
 };
 
 type ReviewField = {
@@ -54,20 +54,20 @@ type ReviewField = {
 };
 
 type PendingReviewItem = {
-  sheet_name: string;
-  row_key: string;
-  row_index: number;
+  sheetName: string;
+  rowKey: string;
+  rowIndex: number;
   note: string;
   fields: ReviewField[];
 };
 
 type NotesImportResult = {
-  base_version_id: string;
-  total_rows_with_notes: number;
-  matched_rows: number;
-  unmatched_rows: number;
+  baseVersionId: string;
+  totalRowsWithNotes: number;
+  matchedRows: number;
+  unmatchedRows: number;
   warnings: string[];
-  review_items: PendingReviewItem[];
+  reviewItems: PendingReviewItem[];
 };
 
 type ReviewedWizardItem = PendingReviewItem & {
@@ -93,8 +93,8 @@ type ExportSheetData = {
 };
 
 type ExportResult = {
-  workbook_name: string;
-  version_label: string;
+  workbookName: string;
+  versionLabel: string;
   sheets: ExportSheetData[];
 };
 
@@ -123,7 +123,7 @@ const totalPages = computed(() => {
   if (!preview.value) {
     return 1;
   }
-  return Math.max(1, Math.ceil(preview.value.total / preview.value.page_size));
+  return Math.max(1, Math.ceil(preview.value.total / preview.value.pageSize));
 });
 
 const currentWizardItem = computed(() => wizardItems.value[wizardIndex.value] ?? null);
@@ -236,7 +236,7 @@ async function importOriginalWorkbookSelection(selection: WorkbookSelection) {
     },
   });
   project.value = imported;
-  selectedVersionId.value = imported.active_version_id;
+  selectedVersionId.value = imported.activeVersionId;
   selectedSheet.value = imported.sheets[0]?.name ?? "";
   page.value = 1;
   syncFilters([]);
@@ -251,7 +251,7 @@ async function importNotesWorkbookSelection(selection: WorkbookSelection) {
 
   const result = await invoke<NotesImportResult>("import_notes_workbook", {
     payload: {
-      projectId: project.value.project_id,
+      projectId: project.value.projectId,
       versionId: selectedVersionId.value,
       sheetName: selectedSheet.value,
       sheet: resolveReturnedSheet(selection),
@@ -259,14 +259,14 @@ async function importNotesWorkbookSelection(selection: WorkbookSelection) {
   });
 
   notesWizard.value = result;
-  wizardItems.value = result.review_items.map((item) => ({
+  wizardItems.value = result.reviewItems.map((item) => ({
     ...item,
     apply: true,
     fields: item.fields.map((field) => ({ ...field })),
   }));
   wizardIndex.value = 0;
   versionLabel.value = `Versione ${project.value.versions.length + 1}`;
-  successMessage.value = `Trovate ${result.total_rows_with_notes} righe con note. ${result.matched_rows} pronte per la revisione.`;
+  successMessage.value = `Trovate ${result.totalRowsWithNotes} righe con note. ${result.matchedRows} pronte per la revisione.`;
 }
 
 async function selectWorkbookFile(target: "original" | "notes") {
@@ -353,7 +353,7 @@ async function loadCurrentProject() {
   }
 
   project.value = current;
-  selectedVersionId.value = current.active_version_id;
+  selectedVersionId.value = current.activeVersionId;
   selectedSheet.value = selectedSheet.value || current.sheets[0]?.name || "";
   await refreshPreview();
 }
@@ -391,7 +391,7 @@ async function refreshPreview() {
   try {
     const data = await invoke<SheetPreview>("get_sheet_preview", {
       payload: {
-        projectId: project.value.project_id,
+      projectId: project.value.projectId,
         versionId: selectedVersionId.value,
         sheetName: selectedSheet.value,
         page: page.value,
@@ -476,17 +476,17 @@ async function saveReviewedVersion() {
   busyLabel.value = "Creo una nuova versione con le modifiche revisionate";
 
   try {
-    const result = await invoke<{ project: ProjectView; created_version_id: string }>("apply_notes_import", {
+    const result = await invoke<{ project: ProjectView; createdVersionId: string }>("apply_notes_import", {
       payload: {
-        projectId: project.value.project_id,
-        baseVersionId: notesWizard.value.base_version_id,
+        projectId: project.value.projectId,
+        baseVersionId: notesWizard.value.baseVersionId,
         label: versionLabel.value,
         reviewedItems: wizardItems.value,
       },
     });
 
     project.value = result.project;
-    selectedVersionId.value = result.created_version_id;
+    selectedVersionId.value = result.createdVersionId;
     closeWizard();
     await refreshPreview();
     successMessage.value = "Nuova versione salvata nello storico.";
@@ -520,7 +520,7 @@ async function exportCurrentVersion() {
   try {
     const result = await invoke<ExportResult>("export_version", {
       payload: {
-        projectId: project.value.project_id,
+        projectId: project.value.projectId,
         versionId: selectedVersionId.value,
         filters: currentFilterPayload(),
       },
@@ -540,7 +540,7 @@ async function exportCurrentVersion() {
     if (isTauriRuntime()) {
       await writeFile(target, new Uint8Array(bytes));
     } else {
-      XLSX.writeFile(workbook, `${result.workbook_name}-${result.version_label}.xlsx`);
+      XLSX.writeFile(workbook, `${result.workbookName}-${result.versionLabel}.xlsx`);
     }
     successMessage.value = "Export completato con i filtri attivi.";
   } catch (error) {
@@ -552,7 +552,7 @@ async function exportCurrentVersion() {
 }
 
 watch(selectedSheet, () => {
-  if (preview.value && preview.value.sheet_name !== selectedSheet.value) {
+  if (preview.value && preview.value.sheetName !== selectedSheet.value) {
     preview.value = null;
   }
 });
@@ -581,14 +581,14 @@ onMounted(async () => {
 
     <aside class="sidebar">
       <div class="brand">
-        <p class="eyebrow">Excel Review</p>
+        <p class="eyebrow">Dematerializzazione</p>
         <h1>Versiona, filtra e integra note.</h1>
       </div>
 
       <section class="project-card" v-if="project">
         <p class="label">Workbook attivo</p>
         <strong>{{ project.name }}</strong>
-        <p class="meta">Importato il {{ formatStamp(project.imported_at) }}</p>
+        <p class="meta">Importato il {{ formatStamp(project.importedAt) }}</p>
       </section>
 
       <section class="sheet-nav" v-if="project">
@@ -729,8 +729,8 @@ onMounted(async () => {
               <p>{{ version.source }}</p>
             </div>
             <div class="history-meta">
-              <span>{{ version.change_count }} modifiche</span>
-              <small>{{ formatStamp(version.created_at) }}</small>
+              <span>{{ version.changeCount }} modifiche</span>
+              <small>{{ formatStamp(version.createdAt) }}</small>
             </div>
           </article>
         </div>
@@ -749,7 +749,7 @@ onMounted(async () => {
 
         <div class="wizard-summary">
           <p class="summary-copy">
-            {{ notesWizard.matched_rows }} righe abbinate, {{ notesWizard.unmatched_rows }} non abbinate.
+            {{ notesWizard.matchedRows }} righe abbinate, {{ notesWizard.unmatchedRows }} non abbinate.
           </p>
           <label class="field">
             <span>Nome nuova versione</span>
@@ -777,7 +777,7 @@ onMounted(async () => {
 
           <div class="note-card">
             <p class="label">Foglio</p>
-            <strong>{{ currentWizardItem.sheet_name }}</strong>
+            <strong>{{ currentWizardItem.sheetName }}</strong>
             <p class="label">Nota ricevuta</p>
             <p class="note">{{ currentWizardItem.note }}</p>
             <label class="checkbox">
@@ -787,7 +787,7 @@ onMounted(async () => {
           </div>
 
           <div class="form-grid">
-            <label v-for="field in currentWizardItem.fields" :key="`${currentWizardItem.row_key}-${field.column}`" class="field">
+            <label v-for="field in currentWizardItem.fields" :key="`${currentWizardItem.rowKey}-${field.column}`" class="field">
               <span>{{ field.column }}</span>
               <input v-model="field.value" type="text" />
             </label>
