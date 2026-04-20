@@ -894,5 +894,5 @@ pub fn run() {
             export_version
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("error while running application");
 }
